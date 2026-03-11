@@ -1,0 +1,8 @@
+<resources>
+    <!-- Base application theme. Using AppCompat as a shell for Compose -->
+    <style name="Base.Theme.GraphGenerator" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+    </style>
+
+    <style name="Theme.GraphGenerator" parent="Base.Theme.GraphGenerator" />
+</resources>
