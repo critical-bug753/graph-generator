@@ -236,7 +236,7 @@ fun exportToPdf(context: Context, chart: LineChart, dataPoints: List<DataPoint>)
 
             val pdi = PrintDocumentInfo.Builder("data_plot.pdf")
                 .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-                .setPageCount(1)
+                .setPageCount(PrintDocumentInfo.PAGE_COUNT_UNKNOWN)
                 .build()
             callback.onLayoutFinished(pdi, true)
         }
@@ -248,48 +248,65 @@ fun exportToPdf(context: Context, chart: LineChart, dataPoints: List<DataPoint>)
             callback: WriteResultCallback?
         ) {
             val pdfDocument = PdfDocument()
-            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size in points
-            val page = pdfDocument.startPage(pageInfo)
-            val canvas = page.canvas
             val paint = Paint()
-
-            // 1. Draw Title
-            paint.textSize = 24f
-            paint.isFakeBoldText = true
-            canvas.drawText("Data Plot Report", 50f, 60f, paint)
-
-            // 2. Draw Graph
-            val chartBitmap = chart.chartBitmap
-            val scaledWidth = 500
-            val scaledHeight = (chartBitmap.height * (scaledWidth.toFloat() / chartBitmap.width)).toInt()
-            val scaledBitmap = Bitmap.createScaledBitmap(chartBitmap, scaledWidth, scaledHeight, true)
-            canvas.drawBitmap(scaledBitmap, 50f, 100f, paint)
-
-            // 3. Draw Table Header
-            var currentY = 100f + scaledHeight + 40f
-            paint.textSize = 18f
-            paint.isFakeBoldText = true
-            canvas.drawText("Data Table", 50f, currentY, paint)
-            currentY += 30f
+            val pageWidth = 595
+            val pageHeight = 842
+            val margin = 50f
             
-            paint.textSize = 14f
-            paint.isFakeBoldText = false
-            canvas.drawText("X Value", 70f, currentY, paint)
-            canvas.drawText("Y Value", 270f, currentY, paint)
-            currentY += 10f
-            canvas.drawLine(50f, currentY, 545f, currentY, paint)
-            currentY += 25f
+            var currentDataIndex = 0
+            var pageNumber = 1
 
-            // 4. Draw Table Rows
-            dataPoints.forEach { point ->
-                if (currentY < 800f) {
-                    canvas.drawText("%.2f".format(point.x), 70f, currentY, paint)
-                    canvas.drawText("%.2f".format(point.y), 270f, currentY, paint)
-                    currentY += 20f
+            while (currentDataIndex < dataPoints.size || pageNumber == 1) {
+                val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                val page = pdfDocument.startPage(pageInfo)
+                val canvas = page.canvas
+                var currentY = margin
+
+                if (pageNumber == 1) {
+                    // 1. Draw Title
+                    paint.textSize = 24f
+                    paint.isFakeBoldText = true
+                    currentY += 30f
+                    canvas.drawText("Data Plot Report", margin, currentY, paint)
+                    currentY += 40f
+
+                    // 2. Draw Graph
+                    val chartBitmap = chart.chartBitmap
+                    val scaledWidth = pageWidth - (2 * margin).toInt()
+                    val scaledHeight = (chartBitmap.height * (scaledWidth.toFloat() / chartBitmap.width)).toInt()
+                    val scaledBitmap = Bitmap.createScaledBitmap(chartBitmap, scaledWidth, scaledHeight, true)
+                    canvas.drawBitmap(scaledBitmap, margin, currentY, paint)
+                    currentY += scaledHeight + 40f
                 }
-            }
 
-            pdfDocument.finishPage(page)
+                // 3. Draw Table Header
+                paint.textSize = 18f
+                paint.isFakeBoldText = true
+                canvas.drawText(if (pageNumber == 1) "Data Table" else "Data Table (cont.)", margin, currentY, paint)
+                currentY += 30f
+                
+                paint.textSize = 14f
+                paint.isFakeBoldText = false
+                canvas.drawText("X Value", margin + 20f, currentY, paint)
+                canvas.drawText("Y Value", margin + 220f, currentY, paint)
+                currentY += 10f
+                canvas.drawLine(margin, currentY, pageWidth - margin, currentY, paint)
+                currentY += 25f
+
+                // 4. Draw Table Rows
+                val rowHeight = 20f
+                while (currentDataIndex < dataPoints.size && currentY < pageHeight - margin) {
+                    val point = dataPoints[currentDataIndex]
+                    canvas.drawText("%.2f".format(point.x), margin + 20f, currentY, paint)
+                    canvas.drawText("%.2f".format(point.y), margin + 220f, currentY, paint)
+                    currentY += rowHeight
+                    currentDataIndex++
+                }
+
+                pdfDocument.finishPage(page)
+                if (currentDataIndex >= dataPoints.size) break
+                pageNumber++
+            }
 
             try {
                 pdfDocument.writeTo(FileOutputStream(destination?.fileDescriptor))

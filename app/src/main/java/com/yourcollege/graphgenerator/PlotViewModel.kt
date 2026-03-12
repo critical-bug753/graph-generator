@@ -8,9 +8,16 @@ class PlotViewModel : ViewModel() {
 
     fun addDataPoint(x: Double, y: Double) {
         dataPoints.add(DataPoint(x = x, y = y))
+        sortPoints()
     }
 
     fun removeDataPoint(dataPoint: DataPoint) {
         dataPoints.remove(dataPoint)
+    }
+
+    private fun sortPoints() {
+        val sorted = dataPoints.sortedBy { it.x }
+        dataPoints.clear()
+        dataPoints.addAll(sorted)
     }
 }
